@@ -19,7 +19,8 @@ const userSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   role: {type: String, default: "user"},
   refreshToken: String,
-  twoFactorAuthToken: String
+  twoFactorAuthToken: String,
+  twoFactorAuthQR: String
 })
 
 module.exports = mongoose.model("User", userSchema);

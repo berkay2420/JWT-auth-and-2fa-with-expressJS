@@ -1,5 +1,6 @@
 const express = require("express");
 const userRoute = require('./routes/userRoute');
+const authRoute = require('./routes/authRoute');
 
 const {connectDB} = require('./config/database');
 require('dotenv').config();
@@ -15,8 +16,6 @@ app.listen(PORT, ()=>{
   console.log(`The server started listening on port ${PORT}`);
 });
 
-app.get("/",(req,res)=>{
-  res.send("Hello world");
-});
-
 app.use("/api", userRoute);
+app.use("/auth", authRoute);
+app.use(express.static("public"));
