@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { db } = require("../model/user");
+
 require('dotenv').config();
 
 const DB_URL = process.env.MONGO_DB_ATLAS_URL;
@@ -14,9 +15,8 @@ const connectDB = async () => {
   } 
 }
 
-const getAllUsers = async () => {
-  const users = await db.collection('users').find({}).toArray();
-  return users;
+function getDB() {
+  return db;
 }
 
-module.exports = {connectDB, getAllUsers};
+module.exports = {connectDB, getDB};

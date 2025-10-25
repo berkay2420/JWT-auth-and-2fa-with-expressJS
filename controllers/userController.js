@@ -1,13 +1,4 @@
-const User = require('../model/user');
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const speakeasy = require("speakeasy");
-const qrcode = require("qrcode");
-
-const {getAllUsers} = require("../config/database");
-require('dotenv').config();
-
-const JWT_SECRET = process.env.SECRET_KEY;
+const {registerUserService, deleteUserService, listUsersService} = require("../services/userService");
 
 const registerNewUser = async (req, res) =>{
   const {name, email, password, role} = req.body;
@@ -15,14 +6,7 @@ const registerNewUser = async (req, res) =>{
   if(!name || !email || !password) return res.status(400).json({'message':"name, email and password required"});
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword,
-      role
-    }); 
+    const newUser = await registerUserService(name, email, password, role)
     await newUser.save();
 
     res.status(201).json({'success':`new user: ${newUser} created`});
@@ -32,12 +16,24 @@ const registerNewUser = async (req, res) =>{
   }
 }
 
-
 const listUsers = async (req, res) =>{
-  const users = await getAllUsers();
+  const users = await listUsersService();
   if(users){
     res.status(200).json(users);
   } 
 }
 
-module.exports = {registerNewUser,listUsers};
+const deleteUser = async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const deletedUser = await deleteUserService(userId);
+    return res.status(200).json({ message: "User deleted", user: deletedUser.value });
+  } catch (error) {
+    console.error(`Error while deleting user erorr: ${error}:` );
+    return res.status(500).json({ error: "Failed to delete user" });
+  }
+};
+
+
+module.exports = {registerNewUser,listUsers, deleteUser};

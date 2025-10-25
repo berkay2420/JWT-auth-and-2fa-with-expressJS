@@ -7,6 +7,6 @@ const {verifyOTP} = require('../controllers/authController');
 
 router.post('/login', login);
 
-router.post('/verifyOTP', verifyOTP);
+router.post('/verify-2fa', verifyOTP);
 
 module.exports = router;
