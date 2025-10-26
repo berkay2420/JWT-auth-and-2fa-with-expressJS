@@ -18,6 +18,15 @@ const userSchema = new Schema({
   },
   createdAt: { type: Date, default: Date.now },
   role: {type: String, default: "user"},
+  games: {
+    type: [
+      {
+        name: { type: String, required: true },
+        price: { type: Number, required: true },
+      }
+    ],
+    default: []
+  },
   refreshToken: String,
   twoFactorAuthToken: String,
   twoFactorAuthQR: String

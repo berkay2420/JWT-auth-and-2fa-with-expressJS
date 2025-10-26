@@ -1,4 +1,8 @@
-const {registerUserService, deleteUserService, listUsersService} = require("../services/userService");
+const {
+  registerUserService,deleteUserService,
+  listUsersService, 
+  addGamesService,
+  getUserService} = require("../services/userService");
 
 const registerNewUser = async (req, res) =>{
   const {name, email, password, role} = req.body;
@@ -35,5 +39,28 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const addNewGame = async(req, res) => {
+  const { game } = req.body;
+  const userId = req.userId;
+  try {
+    const user = await addGamesService(userId, game);
+    return res.status(200).json({ message: "New Game Added", gameslist: user.games});
+  } catch (error) {
+    console.error(`Error while adding new game: ${error}:` );
+    return res.status(500).json({ error: "Failed to add new game" });
+    
+  }
+}
 
-module.exports = {registerNewUser,listUsers, deleteUser};
+const getUser = async (req, res) => {
+  const userId = req.userId;
+  try {
+    const user = await getUserService(userId);
+    return res.status(200).json({ message: "Current User", user: user});
+  } catch (error) {
+    console.error(`Error while adding new game: ${error}:` );
+    return res.status(500).json({ error: "Failed to add new game" });
+    
+  }
+}
+module.exports = {registerNewUser,listUsers, deleteUser, addNewGame, getUser};

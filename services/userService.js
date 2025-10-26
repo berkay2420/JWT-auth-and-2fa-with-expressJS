@@ -28,4 +28,15 @@ const deleteUserService = async (userId) => {
   return user;
 }
 
-module.exports = {registerUserService ,deleteUserService, listUsersService};
+const addGamesService = async (userId, game) => {
+  const currentUser = await User.findById(userId);
+  currentUser.games.push(...game);
+  await currentUser.save();
+  return currentUser;
+};
+
+const getUserService = async(userId) =>{
+  const currentUser = await User.findById(userId);
+  return currentUser;
+}
+module.exports = {registerUserService ,deleteUserService, listUsersService, addGamesService, getUserService};
