@@ -38,13 +38,10 @@ function verifyJWT(req, res, next){
       }
       return res.status(403).json({ message: "Invalid token" });
     }
-
-    // decoded token’ı request’e ekle
-    const payload = jwt.decode(token);
-    req.userId = payload.userId;
+    req.userId = decoded.userId;
+    req.isVerified = decoded.verified;
     next();
   });
-  
 }
 
 
@@ -60,4 +57,6 @@ function decodeJWT(req, res, next){
   req.userId = payload.userId;
   next();
 }
+
+
 module.exports = {authenticateToken, decodeJWT, verifyJWT};

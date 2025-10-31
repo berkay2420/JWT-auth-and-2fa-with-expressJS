@@ -1,0 +1,201 @@
+"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h2 id="welcomeMessage">Welcome!</h2>
+    <h3>Your Games:</h3>
+    <ul id="gameList"></ul>
+
+    <button id="addGameBtn">Add New Game</button>
+
+    <div id="addGameForm" style="display:none; margin-top:10px;">
+      <input type="text" id="newGameName" placeholder="Game Name" required />
+      <input type="text" id="newGamePrice" placeholder="Game Price" required />
+
+      <button id="submitGameBtn">Submit Game</button>
+
+      <button id="verifyEmailBtn" style="background-color: orange;">Verify your email!</button>
+    </div>
+    
+    <form id="otpForm" style="display:none; margin-top:20px;">
+      <input type="text" id="otp" placeholder="Enter OTP" required />
+      <button type="submit">Verify OTP</button>
+    </form>
+
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+
+  <script>
+
+    const token = null;
+    const userId = localStorage.getItem("userId");
+
+    // if (!userId || !token) {
+    //   window.location.href = "index.html";
+    // }
+
+    async function fetchUserData() {
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
+
+      let url = "http://localhost:3000/api/user";
+      let options = {};
+
+      if (token) {
+        options = {
+          method: "GET",
+          headers: { "Authorization": `Bearer ${token}` }
+        };
+      } else if (userId) {
+        
+        url += `?userId=${userId}`;
+        options = { method: "GET" };
+      } else {
+        
+        window.location.href = "index.html";
+        return;
+      }
+
+      const res = await fetch(url, options);
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Failed to fetch user");
+        return;
+      }
+
+      currentUser = data.user;
+      document.getElementById("welcomeMessage").textContent = `Welcome, ${data.user.name}!`;
+
+      const list = document.getElementById("gameList");
+      list.innerHTML = "";
+      data.user.games.forEach(game => {
+        const li = document.createElement("li");
+        li.textContent = `${game.name} - ${game.price}₺`;
+        list.appendChild(li);
+      });
+    }
+
+    fetchUserData();
+
+    document.getElementById("verifyEmailBtn").addEventListener("click", async () => {
+      const currentToken = localStorage.getItem("userId");
+      try {
+        const res = await fetch("http://localhost:3000/auth/verify-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId: currentToken }),
+        });
+
+        const data = await res.json();
+        if (data.status === "PENDING") {
+          alert("OTP sent to your email. Please check and enter it below.");
+          currentUserId = data.data.userId;
+          document.getElementById("addGameForm").style.display = "none";
+          document.getElementById("otpForm").style.display = "block";
+        } else {
+          alert(data.message || "Failed to send verification email.");
+        }
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    });
+
+    document.getElementById("otpForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const otp = document.getElementById("otp").value.trim();
+
+      if (!currentUserId) {
+        alert("User ID not found. Please try sending the email again.");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/auth/verify-2fa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId, otp })
+        });
+
+        const data = await res.json();
+        if (data.status === "SUCCESS" && data.data && data.data.token) {
+          alert("Email verified successfully!");
+
+          localStorage.setItem("token", data.data.token);
+          localStorage.removeItem("userId");
+
+          document.getElementById("otpForm").style.display = "none";
+          document.getElementById("otp").value = "";
+          setTimeout(() => {
+            window.location.reload();
+          }, 300);
+        } else {
+          alert(data.message || "OTP verification failed.");
+        }
+      } catch (error) {
+        alert("An error occurred during OTP verification: " + error.message);
+      }
+    });
+  
+    // Show Add Game Form
+    document.getElementById("addGameBtn").addEventListener("click", () => {
+      const form = document.getElementById("addGameForm");
+      form.style.display = form.style.display === "none" ? "block" : "none";
+    });
+
+    document.getElementById("submitGameBtn").addEventListener("click", async () => {
+      const name = document.getElementById("newGameName").value;
+      const price = parseInt(document.getElementById("newGamePrice").value);
+      const token = localStorage.getItem("token");
+      if (!name || !price) {
+        alert("Please enter both game name and price.");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/api/addNewGame", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ "Content-Type": "Application/JSON", "game": [{name, price}] }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert("Game added successfully!");
+          document.getElementById("newGameName").value = "";
+          document.getElementById("newGamePrice").value = "";
+          document.getElementById("addGameForm").style.display = "none";
+          fetchUserData(); // Listeyi güncelle
+        } else {
+          alert(data.message || "Failed to add game");
+        }
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    });
+    
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      if (currentUser && !currentUser.verified) {
+        localStorage.removeItem("userId");
+      } else {
+        localStorage.removeItem("token");
+      }
+      window.location.href = "index.html";
+    });
+  
+  </script>
+</body>
+</html>

@@ -2,7 +2,7 @@ const nodemailer = require("nodemailer");
 const bcrypt = require("bcrypt");
 require('dotenv').config();
 
-const {UserOTPVerification} = require('../model/userOTPVerification');
+const {UserOTPVerification} = require('../models/userOTPVerification');
 
 const SENDER_ADDRESS = process.env.SMTP_SENDER_MAIL_ADDRESS;
 
@@ -48,7 +48,25 @@ const sendOTPVerificationEmail = async ({ userId, email }) => {
   await sendMail(mailOptions);
 };
 
+const sendVerificationEmail = async ({ userId, email }) => {
+  const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+  const mailOptions = {
+    to: email,
+    html: `<p>This is your verification code for login <b>${otp}</b> </p>`
+  };
+
+  const hashedOTP = await bcrypt.hash(otp, 10);
+  const newOTPVerification = new UserOTPVerification({
+    userId,
+    otp: hashedOTP,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 5 * 60 * 1000
+  });
+
+  await newOTPVerification.save();
+  await sendMail(mailOptions);
+};
 
 
-
-module.exports = {sendOTPVerificationEmail};
+module.exports = {sendOTPVerificationEmail, sendVerificationEmail};

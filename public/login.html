@@ -9,14 +9,17 @@
 <body>
   <div class="container">
     <h2>Login</h2>
+
+    <!-- Login form -->
     <form id="loginForm">
       <input type="email" id="email" placeholder="Email" required />
       <input type="password" id="password" placeholder="Password" required />
       <button type="submit">Login</button>
     </form>
+
     <p>Don’t have an account? <a href="register.html">Register</a></p>
 
-    <!-- OTP input -->
+    <!-- OTP form -->
     <form id="otpForm" style="display:none; margin-top:20px;">
       <input type="text" id="otp" placeholder="Enter OTP" required />
       <button type="submit">Verify OTP</button>
@@ -24,49 +27,66 @@
   </div>
 
   <script>
-    let currentUser = null;
+    let currentUserId = null;
+    const HOME_URL = "home.html";
 
-    // LOGIN
+    // LOGIN FORM
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
 
-      const res = await fetch("/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch("http://localhost:3000/auth/login", {  
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })  
+        });
 
-      if (data.status === "PENDING") {
-        currentUser = data.data;
-        currentUserId = data.data.userId;
-        document.getElementById("loginForm").style.display = "none";
-        document.getElementById("otpForm").style.display = "block";
-      } else {
-        alert(data.message || "Login failed");
+        const data = await res.json();
+
+        if (data.status === "SUCCESS"  && data.data.token) {
+          localStorage.setItem("token", data.data.token);
+          window.location.href = HOME_URL;
+        } else if (data.status === "SUCCESS"){
+          localStorage.setItem("userId", data.data.userId );
+          window.location.href = HOME_URL;
+        } else {
+          alert(data.message || "Login failed");
+        }
+
+      } catch (error) {
+        alert("An error occurred during login: " + error.message);
       }
     });
 
-    // OTP VERIFY
+    // OTP FORM
     document.getElementById("otpForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const otp = document.getElementById("otp").value;
 
-      const res = await fetch("/auth/verifyOTP", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: currentUserId, otp }),
-      });
+      if (!currentUserId) {
+        alert("User ID not found. Please log in again.");
+        return;
+      }
 
-      const data = await res.json();
-      if (data.status === "SUCCESS") {
-        alert("Login successful! Token: " + data.data.token);
-        // Save JWT to local storage
-        localStorage.setItem("token", data.data.token);
-      } else {
-        alert(data.message);
+      try {
+        const res = await fetch("http://localhost:3000/auth/verify-emailOTP", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId, otp })
+        });
+
+        const data = await res.json();
+        if (data.status === "SUCCESS" && data.data && data.data.token) {
+          alert("Login successful!");
+          localStorage.setItem("token", data.data.token);
+          window.location.href = HOME_URL;
+        } else {
+          alert(data.message || "OTP verification failed.");
+        }
+      } catch (error) {
+        alert("An error occurred during OTP verification: " + error.message);
       }
     });
   </script>

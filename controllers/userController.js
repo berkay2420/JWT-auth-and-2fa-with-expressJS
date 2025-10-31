@@ -2,7 +2,8 @@ const {
   registerUserService,deleteUserService,
   listUsersService, 
   addGamesService,
-  getUserService} = require("../services/userService");
+  getUserService,
+  listGamesService} = require("../services/userService");
 
 const registerNewUser = async (req, res) =>{
   const {name, email, password, role} = req.body;
@@ -42,6 +43,8 @@ const deleteUser = async (req, res) => {
 const addNewGame = async(req, res) => {
   const { game } = req.body;
   const userId = req.userId;
+  const isVerified = req.isVerified;
+  if (!isVerified) return res.status(403).json({ message: "UNABLE TO ADD NEW GAME PLEASE VERIY EMAİL"});
   try {
     const user = await addGamesService(userId, game);
     return res.status(200).json({ message: "New Game Added", gameslist: user.games});
@@ -52,15 +55,35 @@ const addNewGame = async(req, res) => {
   }
 }
 
-const getUser = async (req, res) => {
+const listGames = async (req, res) => {
   const userId = req.userId;
   try {
-    const user = await getUserService(userId);
-    return res.status(200).json({ message: "Current User", user: user});
+    let user = await listGamesService(userId);
+    return res.status(200).json({message:`Game list`, gameslist: user.games});
   } catch (error) {
-    console.error(`Error while adding new game: ${error}:` );
-    return res.status(500).json({ error: "Failed to add new game" });
-    
+    console.error(`Error while listing games: ${error}:` );
+    return res.status(500).json({ error: "Failed to list games" });
   }
+  
 }
-module.exports = {registerNewUser,listUsers, deleteUser, addNewGame, getUser};
+
+const getUser = async (req, res) => {
+  try {
+    const userId = req.userId || req.query.userId;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing" });
+    }
+
+    const user = await getUserService(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ message: "Current User", user });
+  } catch (error) {
+    console.error(`Error while fetching user: ${error}`);
+    res.status(500).json({ error: "Failed to fetch user" });
+  }
+};
+
+module.exports = {registerNewUser,listUsers, deleteUser, addNewGame, getUser, listGames};

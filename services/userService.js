@@ -1,4 +1,4 @@
-const User = require("../model/user");
+const User = require("../models/user");
 const {ObjectId} = require("mongodb");
 const bcrypt = require("bcrypt");
 const { db } = require("../config/database");
@@ -35,8 +35,13 @@ const addGamesService = async (userId, game) => {
   return currentUser;
 };
 
+const listGamesService = async (userId) => {
+  const {games} = await User.findById(userId).select("games");
+  return {games};
+}
+
 const getUserService = async(userId) =>{
   const currentUser = await User.findById(userId);
   return currentUser;
 }
-module.exports = {registerUserService ,deleteUserService, listUsersService, addGamesService, getUserService};
+module.exports = {registerUserService ,deleteUserService, listUsersService, addGamesService, getUserService, listGamesService};

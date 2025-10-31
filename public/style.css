@@ -4,49 +4,81 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
 }
 
+
 .container {
-  background: white;
+  background-color: #fff;
   padding: 2rem;
-  border-radius: 15px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
   width: 350px;
+  box-sizing: border-box;
+  text-align: center;
 }
 
-h2 {
-  text-align: center;
-  margin-bottom: 20px;
+h2, h3 {
   color: #333;
+  margin-bottom: 15px;
 }
 
 input {
   width: 100%;
   padding: 10px;
-  margin: 10px 0;
+  margin: 8px 0;
   border: 1px solid #ccc;
-  border-radius: 8px;
+  border-radius: 6px;
   outline: none;
+  box-sizing: border-box;
+}
+
+input:focus {
+  border-color: #4a90e2;
 }
 
 button {
   width: 100%;
   padding: 10px;
-  background: #4a90e2;
+  background-color: #4a90e2;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: bold;
 }
 
 button:hover {
-  background: #357abd;
+  background-color: #357abd;
 }
 
 p {
-  text-align: center;
   margin-top: 10px;
+  font-size: 0.9rem;
+}
+
+a {
+  color: #4a90e2;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0 0;
+  text-align: left;
+}
+
+li {
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+
+#logoutBtn {
+  margin-top: 15px;
 }
