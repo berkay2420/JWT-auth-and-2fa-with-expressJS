@@ -34,9 +34,6 @@
 
   <script>
 
-    const token = null;
-    const userId = localStorage.getItem("userId");
-
     // if (!userId || !token) {
     //   window.location.href = "index.html";
     // }
@@ -81,19 +78,21 @@
         li.textContent = `${game.name} - ${game.price}₺`;
         list.appendChild(li);
       });
+
+      show2FAQuestion(data.user);
     }
 
     fetchUserData();
 
     document.getElementById("verifyEmailBtn").addEventListener("click", async () => {
-      const currentToken = localStorage.getItem("userId");
+      const userId = localStorage.getItem("userId");
       try {
         const res = await fetch("http://localhost:3000/auth/verify-email", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ userId: currentToken }),
+          body: JSON.stringify({ userId }),
         });
 
         const data = await res.json();
@@ -120,7 +119,7 @@
       }
 
       try {
-        const res = await fetch("http://localhost:3000/auth/verify-2fa", {
+        const res = await fetch("http://localhost:3000/auth/verify-emailOTP", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: currentUserId, otp })
@@ -145,7 +144,54 @@
         alert("An error occurred during OTP verification: " + error.message);
       }
     });
-  
+    
+    function show2FAQuestion(user) {
+        const token = localStorage.getItem("token");
+        
+        if (token && user.verified && !user.enable2fa) {
+          const container = document.querySelector(".container");
+
+          const questionDiv = document.createElement("div");
+          questionDiv.id = "twoFAQuestion";
+          questionDiv.style.marginTop = "20px";
+          questionDiv.innerHTML = `
+            <p>Would you like to enable 2FA?</p>
+            <button id="enable2FA">Yes</button>
+            <button id="skip2FA">No</button>
+          `;
+
+          container.appendChild(questionDiv);
+
+          document.getElementById("enable2FA").addEventListener("click", async () => {
+            try {
+              const res = await fetch("http://localhost:3000/auth/enable-2fa", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${token}`,
+                },
+              });
+
+              const data = await res.json();
+
+              if (res.ok && data.status === "SUCCESS") {
+                alert("2FA successfully enabled!");
+              } else {
+                alert(data.message || "Failed to enable 2FA");
+              }
+            } catch (err) {
+              alert("Error: " + err.message);
+            } finally {
+              questionDiv.remove();
+            }
+          });
+
+          document.getElementById("skip2FA").addEventListener("click", () => {
+            questionDiv.remove();
+          });
+        }
+    }
+
+
     // Show Add Game Form
     document.getElementById("addGameBtn").addEventListener("click", () => {
       const form = document.getElementById("addGameForm");

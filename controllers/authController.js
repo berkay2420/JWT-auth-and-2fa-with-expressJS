@@ -1,4 +1,4 @@
-const {loginService, verifyOTPService, verifyEmailService, verifyEmailOTPService} = require("../services/authService");
+const {loginService, verifyOTPService, verifyEmailService, verifyEmailOTPService, enable2FAService} = require("../services/authService");
 
 require('dotenv').config();
 
@@ -12,27 +12,39 @@ const login = async (req, res) => {
   try {
     const result = await loginService(email, password);
 
-    if (result.token) {
+    if (result.status === "SUCCESS") {
       return res.status(200).json({
         status: "SUCCESS",
         message: "User logged in successfully.",
         data: {
           userId: result.existingUser._id,
           email: result.existingUser.email,
-          token: result.token,
+          token: result.token, // Token 
         },
       });
     }
 
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: "User not verified. Please verify your email.",
-      data: {
-        userId: result._id,
-        email: result.email,
-      },
-    });
+    if (result.status === "2FA_PENDING") {
+        return res.status(200).json({
+          status: "2FA_PENDING", // Frontend
+          message: "OTP sent for 2FA verification.",
+          data: {
+            userId: result.existingUser._id, 
+            email: result.existingUser.email,
+          },
+        });
+      }
 
+    if (result.status === "UNVERIFIED") {
+        return res.status(200).json({
+          status: "SUCCESS", 
+          message: "User not verified. Please verify your email.",
+          data: {
+            userId: result.existingUser._id, 
+            email: result.existingUser.email,
+          },
+        });
+    }
   } catch (error) {
     console.error(error);
     return res.status(500).json({ status: "FAILED", message: error.message });
@@ -77,10 +89,9 @@ const verifyEmail = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ status: "FAILED to verify mail", message: error.message });
+    res.status(500).json({ status: "FAILED", message: error.message });
   }
 }
-
 
 const verifyEmailOTP = async (req, res) => {
   try {
@@ -103,4 +114,23 @@ const verifyEmailOTP = async (req, res) => {
     res.status(500).json({ status: "FAILED", message: error.message });
   }
 }
-module.exports = {login, verifyOTP, verifyEmail, verifyEmailOTP};
+
+const enable2fa = async (req, res) => {
+  const userId = req.userId;
+
+  if (!userId) {
+      return res.status(400).json({ status: "FAILED", message: "User ID required"});}
+  try {
+    const {user, token } =  await enable2FAService(userId);
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "2FA successfully enabled",
+      data: { user, token }
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ status: "FAILED to enable 2FA", message: error.message });
+  }
+}
+module.exports = {login, verifyOTP, verifyEmail, verifyEmailOTP, enable2fa};

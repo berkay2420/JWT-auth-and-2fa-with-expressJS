@@ -14,18 +14,31 @@ const loginService =  async (email, password) => {
   
   const isPasswordValid = await bcrypt.compare(password, existingUser.password);
   if (!isPasswordValid) throw new Error("Invalid password");
+
+  if(!existingUser.verified){
+    return {status: "UNVERIFIED", existingUser};
+  }
   
-  if (existingUser.verified) {
-    const token = jwt.sign(
-      { userId: existingUser._id, email: existingUser.email, role: existingUser.role, verified: existingUser.verified },
+  if(existingUser.verified && existingUser.enable2fa){
+    await sendOTPVerificationEmail({ userId: existingUser._id, email: existingUser.email });
+
+    return { status: "2FA_PENDING", existingUser };
+  }
+  
+  const token = jwt.sign(
+      { userId: existingUser._id, 
+        email: existingUser.email, 
+        role: existingUser.role, 
+        verified: existingUser.verified,
+        enable2fa: existingUser.enable2fa
+      },
       JWT_SECRET,
       { expiresIn: "1h" }
-    );
-    return { status: "SUCCESS", existingUser, token };
-  }
-
-  return existingUser;
+  );
+    
+  return { status: "SUCCESS", existingUser, token };
 }
+
 
 const verifyOTPService = async (userId, otp) => {
 
@@ -48,7 +61,12 @@ const verifyOTPService = async (userId, otp) => {
 
   //Create JWT 
   const token = jwt.sign(
-    { userId: user._id, email: user.email, role: user.role, verified: user.verified },
+    { userId: user._id, 
+      email: user.email, 
+      role: user.role, 
+      verified: user.verified, 
+      enable2fa: user.enable2fa 
+    },
       JWT_SECRET,
       { expiresIn: "5m" }
   );
@@ -89,13 +107,30 @@ const verifyEmailOTPService = async (userId, otp) => {
 
   //Create JWT 
   const token = jwt.sign(
-    { userId: user._id, email: user.email, role: user.role, verified: user.verified },
+    { userId: user._id, 
+      email: user.email, 
+      role: user.role, 
+      verified: user.verified, 
+      enable2fa: user.enable2fa 
+    },
+      JWT_SECRET,
+      { expiresIn: "5m" }
+  );
+  return {token, user};
+
+}
+
+const enable2FAService = async (userId) => {
+  const user = await User.findById(userId);
+  user.enable2fa = true;
+  await user.save();
+
+  const token = jwt.sign(
+    { userId: user._id, email: user.email, role: user.role, verified: user.verified, enable2fa: user.enable2fa },
       JWT_SECRET,
       { expiresIn: "5m" }
   );
 
   return {token, user};
-
 }
-
-module.exports = {loginService, verifyOTPService, verifyEmailService, verifyEmailOTPService};
+module.exports = {loginService, verifyOTPService, verifyEmailService, verifyEmailOTPService, enable2FAService};

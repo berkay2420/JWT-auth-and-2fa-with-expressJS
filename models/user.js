@@ -28,7 +28,8 @@ const userSchema = new Schema({
     default: []
   },
   refreshToken: String,
-  verified: {type: Boolean, default:false}
+  verified: {type: Boolean, default:false},
+  enable2fa: {type: Boolean, default:false}
 })
 
 module.exports = mongoose.model("User", userSchema);

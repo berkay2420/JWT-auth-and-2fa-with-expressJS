@@ -45,12 +45,23 @@
 
         const data = await res.json();
 
+        
         if (data.status === "SUCCESS"  && data.data.token) {
           localStorage.setItem("token", data.data.token);
           window.location.href = HOME_URL;
-        } else if (data.status === "SUCCESS"){
+        
+        
+        } else if (data.status === "2FA_PENDING") {
+          alert(data.message || "2FA Koruması: Lütfen e-postanıza gönderilen OTP'yi girin.");
+          currentUserId = data.data.userId; 
+         
+          document.getElementById("loginForm").style.display = "none";
+          document.getElementById("otpForm").style.display = "block";
+
+        } else if (data.status === "SUCCESS" && !data.data.token){
           localStorage.setItem("userId", data.data.userId );
-          window.location.href = HOME_URL;
+          window.location.href = HOME_URL; // home.html
+
         } else {
           alert(data.message || "Login failed");
         }
@@ -60,7 +71,6 @@
       }
     });
 
-    // OTP FORM
     document.getElementById("otpForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const otp = document.getElementById("otp").value;
@@ -71,7 +81,8 @@
       }
 
       try {
-        const res = await fetch("http://localhost:3000/auth/verify-emailOTP", {
+        
+        const res = await fetch("http://localhost:3000/auth/verify-2fa", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: currentUserId, otp })
@@ -81,6 +92,7 @@
         if (data.status === "SUCCESS" && data.data && data.data.token) {
           alert("Login successful!");
           localStorage.setItem("token", data.data.token);
+          localStorage.removeItem("userId"); 
           window.location.href = HOME_URL;
         } else {
           alert(data.message || "OTP verification failed.");
