@@ -1,4 +1,4 @@
-"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -31,55 +31,110 @@
     <button id="logoutBtn">Logout</button>
   </div>
 
-
   <script>
+    let currentUserId;
+    let currentUser;
 
-    // if (!userId || !token) {
-    //   window.location.href = "index.html";
-    // }
+    function logout() {
+      localStorage.removeItem("userId");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      window.location.href = "index.html";
+    }
 
-    async function fetchUserData() {
-      const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId");
+    async function handleTokenRefresh() {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) {
+        logout();
+        throw new Error("No refresh token available. Logging out.");
+      }
 
-      let url = "http://localhost:3000/api/user";
-      let options = {};
+      try {
+        const res = await fetch("http://localhost:3000/auth/refresh-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: refreshToken })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.status === "SUCCESS") {
+          const newAccessToken = data.data.accessToken;
+          localStorage.setItem("accessToken", newAccessToken);
+          return newAccessToken;
+        } else {
+          logout();
+          throw new Error(data.message || "Session expired. Please log in again.");
+        }
+      } catch (error) {
+        logout();
+        throw new Error("Session refresh failed. Logging out.");
+      }
+    }
+
+    async function secureFetch(url, options = {}) {
+      let token = localStorage.getItem("accessToken");
+
+      if (!options.headers) {
+        options.headers = {};
+      }
 
       if (token) {
-        options = {
-          method: "GET",
-          headers: { "Authorization": `Bearer ${token}` }
-        };
-      } else if (userId) {
-        
+        options.headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      let res = await fetch(url, options);
+
+      if (res.status === 401) {
+        try {
+          const newAccessToken = await handleTokenRefresh();
+          options.headers["Authorization"] = `Bearer ${newAccessToken}`;
+          res = await fetch(url, options);
+        } catch (refreshError) {
+          throw refreshError;
+        }
+      }
+
+      return res;
+    }
+
+    async function fetchUserData() {
+      const userId = localStorage.getItem("userId");
+      let url = "http://localhost:3000/api/user";
+      let options = { method: "GET" };
+
+      if (!localStorage.getItem("accessToken") && userId) {
         url += `?userId=${userId}`;
-        options = { method: "GET" };
-      } else {
-        
+      } else if (!localStorage.getItem("accessToken") && !userId) {
         window.location.href = "index.html";
         return;
       }
 
-      const res = await fetch(url, options);
-      const data = await res.json();
+      try {
+        const res = await secureFetch(url, options);
+        const data = await res.json();
 
-      if (!res.ok) {
-        alert(data.message || "Failed to fetch user");
-        return;
+        if (!res.ok) {
+          alert(data.message || "Failed to fetch user");
+          return;
+        }
+
+        currentUser = data.user;
+        document.getElementById("welcomeMessage").textContent = `Welcome, ${data.user.name}!`;
+
+        const list = document.getElementById("gameList");
+        list.innerHTML = "";
+        data.user.games.forEach(game => {
+          const li = document.createElement("li");
+          li.textContent = `${game.name} - ${game.price}₺`;
+          list.appendChild(li);
+        });
+
+        show2FAQuestion(data.user);
+      } catch (error) {
+        console.error(error);
+        alert(error.message);
       }
-
-      currentUser = data.user;
-      document.getElementById("welcomeMessage").textContent = `Welcome, ${data.user.name}!`;
-
-      const list = document.getElementById("gameList");
-      list.innerHTML = "";
-      data.user.games.forEach(game => {
-        const li = document.createElement("li");
-        li.textContent = `${game.name} - ${game.price}₺`;
-        list.appendChild(li);
-      });
-
-      show2FAQuestion(data.user);
     }
 
     fetchUserData();
@@ -126,10 +181,11 @@
         });
 
         const data = await res.json();
-        if (data.status === "SUCCESS" && data.data && data.data.token) {
+        if (data.status === "SUCCESS" && data.data && data.data.accessToken) {
           alert("Email verified successfully!");
 
-          localStorage.setItem("token", data.data.token);
+          localStorage.setItem("accessToken", data.data.accessToken);
+          localStorage.setItem("refreshToken", data.data.refreshToken);
           localStorage.removeItem("userId");
 
           document.getElementById("otpForm").style.display = "none";
@@ -146,53 +202,48 @@
     });
     
     function show2FAQuestion(user) {
-        const token = localStorage.getItem("token");
-        
-        if (token && user.verified && !user.enable2fa) {
-          const container = document.querySelector(".container");
+      const token = localStorage.getItem("accessToken");
+      
+      if (token && user.verified && !user.enable2fa) {
+        const container = document.querySelector(".container");
 
-          const questionDiv = document.createElement("div");
-          questionDiv.id = "twoFAQuestion";
-          questionDiv.style.marginTop = "20px";
-          questionDiv.innerHTML = `
-            <p>Would you like to enable 2FA?</p>
-            <button id="enable2FA">Yes</button>
-            <button id="skip2FA">No</button>
-          `;
+        const questionDiv = document.createElement("div");
+        questionDiv.id = "twoFAQuestion";
+        questionDiv.style.marginTop = "20px";
+        questionDiv.innerHTML = `
+          <p>Would you like to enable 2FA?</p>
+          <button id="enable2FA">Yes</button>
+          <button id="skip2FA">No</button>
+        `;
 
-          container.appendChild(questionDiv);
+        container.appendChild(questionDiv);
 
-          document.getElementById("enable2FA").addEventListener("click", async () => {
-            try {
-              const res = await fetch("http://localhost:3000/auth/enable-2fa", {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${token}`,
-                },
-              });
+        document.getElementById("enable2FA").addEventListener("click", async () => {
+          try {
+            const options = { method: "POST" };
+            const res = await secureFetch("http://localhost:3000/auth/enable-2fa", options);
+            const data = await res.json();
 
-              const data = await res.json();
-
-              if (res.ok && data.status === "SUCCESS") {
-                alert("2FA successfully enabled!");
-              } else {
-                alert(data.message || "Failed to enable 2FA");
-              }
-            } catch (err) {
-              alert("Error: " + err.message);
-            } finally {
-              questionDiv.remove();
+            if (res.ok && data.status === "SUCCESS") {
+              localStorage.setItem("accessToken", data.data.accessToken);
+              localStorage.setItem("refreshToken", data.data.refreshToken);
+              alert("2FA successfully enabled!");
+            } else {
+              alert(data.message || "Failed to enable 2FA");
             }
-          });
-
-          document.getElementById("skip2FA").addEventListener("click", () => {
+          } catch (err) {
+            alert("Error: " + err.message);
+          } finally {
             questionDiv.remove();
-          });
-        }
+          }
+        });
+
+        document.getElementById("skip2FA").addEventListener("click", () => {
+          questionDiv.remove();
+        });
+      }
     }
 
-
-    // Show Add Game Form
     document.getElementById("addGameBtn").addEventListener("click", () => {
       const form = document.getElementById("addGameForm");
       form.style.display = form.style.display === "none" ? "block" : "none";
@@ -201,22 +252,22 @@
     document.getElementById("submitGameBtn").addEventListener("click", async () => {
       const name = document.getElementById("newGameName").value;
       const price = parseInt(document.getElementById("newGamePrice").value);
-      const token = localStorage.getItem("token");
+
       if (!name || !price) {
         alert("Please enter both game name and price.");
         return;
       }
 
-      try {
-        const res = await fetch("http://localhost:3000/api/addNewGame", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({ "Content-Type": "Application/JSON", "game": [{name, price}] }),
-        });
+      const options = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ game: [{ name, price }] }),
+      };
 
+      try {
+        const res = await secureFetch("http://localhost:3000/api/addNewGame", options);
         const data = await res.json();
 
         if (res.ok) {
@@ -224,24 +275,17 @@
           document.getElementById("newGameName").value = "";
           document.getElementById("newGamePrice").value = "";
           document.getElementById("addGameForm").style.display = "none";
-          fetchUserData(); // Listeyi güncelle
+          fetchUserData();
         } else {
           alert(data.message || "Failed to add game");
         }
       } catch (error) {
-        alert("Error: " + error.message);
+        console.error(error);
+        alert(error.message);
       }
     });
     
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      if (currentUser && !currentUser.verified) {
-        localStorage.removeItem("userId");
-      } else {
-        localStorage.removeItem("token");
-      }
-      window.location.href = "index.html";
-    });
-  
+    document.getElementById("logoutBtn").addEventListener("click", logout);
   </script>
 </body>
 </html>

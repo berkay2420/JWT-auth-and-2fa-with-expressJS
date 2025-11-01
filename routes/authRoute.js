@@ -1,7 +1,15 @@
 const express = require("express");
 const router=express.Router();
 
-const{login, verifyEmail, verifyOTP, verifyEmailOTP, enable2fa} = require('../controllers/authController')
+const{
+    login, 
+    verifyEmail, 
+    verifyOTP, 
+    verifyEmailOTP, 
+    enable2fa, 
+    refreshToken 
+} = require('../controllers/authController')
+
 const {authenticateToken, verifyJWT} = require('../middleware/middleware');
 
 router.post('/login', login);
@@ -13,5 +21,7 @@ router.post('/verify-email', verifyEmail);
 router.post('/verify-emailOTP', verifyEmailOTP);
 
 router.post('/enable-2fa', verifyJWT, enable2fa);
+
+router.post('/refresh-token', refreshToken);
 
 module.exports = router;
